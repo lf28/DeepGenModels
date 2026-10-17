@@ -159,7 +159,7 @@ function plot_loss_history(train_nll_history, val_nll_history, train_loader; xsc
     val_epochs = 1:length(val_nll_history)
 
     # ylims = extrema(train_nll_history)
-    ylims = (minimum([train_nll_history..., val_nll_history...]), maximum(val_nll_history) + 0.5 * std(val_nll_history))
+    ylims = (minimum([train_nll_history..., val_nll_history...]), maximum(val_nll_history) + max(0.5 * std(val_nll_history), 0.25 * std(train_nll_history)))
     # Initialize the plot layout
     plt = plot(
         title="Training Progress: Negative Log-Likelihood",
