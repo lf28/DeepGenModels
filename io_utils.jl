@@ -106,17 +106,32 @@ function load_binary_mnist_data(batch_size::Int=2000; tensor_shape=(28^2, :), se
     return train_loader, test_loader, valid_loader
 end
 
-function tensor2imgs(tensors; nrows=2, flip=false, npad=2)
+function tensor2imgs(tensors; nrows=2, flip=false, npad=2, title="")
     tensors = tensors |> cpu
     tensors = dropdims(tensors, dims=3)
     if flip
         tensors = 1 .- tensors
     end
-    mosaicview(Gray.(permuteddimsview(tensors, [2, 1, 3])), fillvalue=0, nrow=nrows, npad=npad, rowmajor=true)
+    mosaic = mosaicview(Gray.(permuteddimsview(tensors, [2, 1, 3])), fillvalue=0, nrow=nrows, npad=npad, rowmajor=true)
+
+    # 2. If no title is supplied, return the raw mosaic as you did before
+    if isempty(title)
+        return mosaic
+    end
+
+    # 3. If a title is provided, wrap the mosaic inside a Plots layout canvas
+    return plot(mosaic,
+        title=title,
+        titlefontsize=14,
+        titlelocation=:center,
+        ticks=false,         # Hide the pixel grid axes
+        showaxis=false,      # Hide the surrounding plot borders
+        legend=false,        # Remove color mapping keys
+        aspect_ratio=:equal) # Maintain the image's original dimensions
 end;
 
 
-function vec2imgs(vecs; nrows=2, flip=false, npad=2, H=28, W=28)
+function vec2imgs(vecs; nrows=2, flip=false, npad=2, H=28, W=28, title="")
     vecs = vecs |> cpu
     if ndims(vecs) == 1
         vecs = vecs'
@@ -132,7 +147,23 @@ function vec2imgs(vecs; nrows=2, flip=false, npad=2, H=28, W=28)
         output = 1 .- output
     end
     # return Gray.(output)
-    mosaicview(Gray.(output), fillvalue=0.2, nrow=nrows, npad=npad, rowmajor=true)
+    mosaic = mosaicview(Gray.(output), fillvalue=0.2, nrow=nrows, npad=npad, rowmajor=true)
+
+
+    # 2. If no title is supplied, return the raw mosaic as you did before
+    if isempty(title)
+        return mosaic
+    end
+
+    # 3. If a title is provided, wrap the mosaic inside a Plots layout canvas
+    return plot(mosaic,
+        title=title,
+        titlefontsize=14,
+        titlelocation=:center,
+        ticks=false,         # Hide the pixel grid axes
+        showaxis=false,      # Hide the surrounding plot borders
+        legend=false,        # Remove color mapping keys
+        aspect_ratio=:equal) # Maintain the image's original dimensions
 end
 
 """
@@ -210,5 +241,68 @@ function plot_loss(loss, n_batch; xscale=:log10, fmt=:svg, title="")
         label="epoch mean")
     plt
 end
+
+
+
+# using JLD2, Flux, Images, MosaicViews, Plots, CUDA
+
+# 2. The pipeline that loops through your sub-folder checkpoints
+function visualize_all_checkpoints(folder_path::String; num_samples=64, nrows=8)
+    # Locate and sort all numbered epoch checkpoints chronologically
+    all_files = readdir(folder_path)
+    epoch_files = filter(f -> occursin(r"model_epoch_\d+\.jld2", f), all_files)
+    sort!(epoch_files, by=f -> parse(Int, match(r"\d+", f).match))
+
+    # Create an output directory for your generation results
+    plots_out_dir = joinpath(folder_path, "sampled_plots")
+    mkpath(plots_out_dir)
+    println("Found $(length(epoch_files)) checkpoints. Rendering plots...")
+
+    plts = []
+    for (i, file) in enumerate(epoch_files)
+        # === FILTER RULE ===
+        # i <= 5: Shows indices 1, 2, 3, 4, 5
+        # i % 5 == 0: Shows indices 5, 10, 15, 20, etc.
+        if i <= 5 || (i-1) % 5 == 0 || i == length(epoch_files)
+            epoch_num = match(r"\d+", file).match
+            checkpoint_path = joinpath(folder_path, file)
+
+            # 2. Extract model and validation loss from the JLD2 archive
+            cpu_model, val_loss = jldopen(checkpoint_path, "r") do io
+                return io["model"], io["val_loss"]
+            end
+
+            # # Move the model to the GPU for quick generation
+            model = cpu_model |> device
+
+            # # 3. Generate your samples
+            raw_samples = sample(model, num_samples)
+            #    
+
+            formatted_loss = round(val_loss, digits=2)
+            #         # --- MOSAIC & PLOTTING BLOCK ---
+            #         # Generate the 10x10 layout using your custom vec2imgs method
+            grid_figure = vec2imgs(
+                raw_samples;
+                nrows=nrows,
+                title="Epoch $epoch_num | Valid Loss: $formatted_loss"
+            )
+
+            push!(plts, grid_figure)
+            # 6. Force inline display in Jupyter / VS Code
+            display(grid_figure)
+
+            # Free up GPU resources before running the next iteration
+            CUDA.reclaim()
+
+            ## Save the figure to your subfolder
+            out_filename = joinpath(plots_out_dir, "epoch_$(epoch_num)_grid.png")
+            savefig(grid_figure, out_filename)
+        end
+    end
+    plts
+end
+# # end
+
 
 
