@@ -169,12 +169,20 @@ losses_pixcnn2stacks_12, valid_loss_pixcnn2stacks_12, best_pixcnn2stacks_12 = fi
 logpdf(best_pixcnn2stacks_12 |> device, mnist_binary_test |> device)
 
 
+
+logpdf(pixcnn2stacks_12 |> device, mnist_binary_test |> device)
+
+##
+
+folder_path = "./checkpoints/PixelCNNTwoStack_12_layers"
+set_rand_seed(1234)
+sample_figs = visualize_all_checkpoints(folder_path; num_samples=64, nrows=8, every_epoch=2);
 ## ============================================================================================
 ## Class-conditional two-stack PixelCNN: p(x | y)
 ## ============================================================================================
 
 ## labelled MNIST, binarised stochastically; dynamic=true binarises the training images again every epoch
-train_loader, test_loader, valid_loader = load_mnist_data(batch_size; dtype=Bool, tensor_shape=(28, 28, 1, :), dynamic=false)
+train_loader, test_loader, valid_loader = load_mnist_data(batch_size; dtype=Bool, tensor_shape=(28, 28, 1, :), dynamic=true)
 
 ## 6 layers, 32 channels
 Random.seed!(123)
