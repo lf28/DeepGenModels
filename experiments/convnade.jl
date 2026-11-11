@@ -6,8 +6,8 @@ Description: ConvNADE on binarised MNIST (order-agnostic training with a convolu
 
 ## setup
 cd(joinpath(@__DIR__, ".."))     # the repository root: data in ./datasets
-include("setup.jl")
-include("src/convnade.jl")
+include("../setup.jl")             # paths in include() are relative to THIS file
+include("../src/convnade.jl")
 
 ## data: the fixed binarised MNIST benchmark, as images (28, 28, 1, n); the default batch size is 2000
 mnist_binary_loader, mnist_binary_test, mnist_binary_valid = load_binary_mnist_data(; tensor_shape=(28, 28, 1, :));

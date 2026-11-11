@@ -7,8 +7,8 @@ Description: MADE on binarised MNIST: one fixed order with a direct connection; 
 
 ## setup
 cd(joinpath(@__DIR__, ".."))     # the repository root: data in ./datasets, checkpoints in ./checkpoints
-include("setup.jl")
-include("src/made.jl")
+include("../setup.jl")             # paths in include() are relative to THIS file
+include("../src/made.jl")
 
 ## data: the fixed binarised MNIST benchmark, as vectors (784, n)
 batch_size = 128

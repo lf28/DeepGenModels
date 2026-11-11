@@ -7,8 +7,8 @@ Description: binarised MNIST as a sequence of 784 pixels: PixelCNN1D with and wi
 
 ## setup
 cd(joinpath(@__DIR__, ".."))     # the repository root: data in ./datasets, checkpoints in ./checkpoints
-include("setup.jl")
-include("src/wavenet.jl")
+include("../setup.jl")             # paths in include() are relative to THIS file
+include("../src/wavenet.jl")
 
 ## data: 1D convolutions expect (784, 1, batch), so a dummy channel dimension is added
 batch_size = 64

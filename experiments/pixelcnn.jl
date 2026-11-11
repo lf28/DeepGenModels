@@ -7,8 +7,8 @@ Description: PixelCNN on binarised MNIST: single stack (blind spot), two stacks,
 
 ## setup
 cd(joinpath(@__DIR__, ".."))     # the repository root: data in ./datasets, checkpoints in ./checkpoints
-include("setup.jl")
-include("src/pixelcnn.jl")
+include("../setup.jl")             # paths in include() are relative to THIS file
+include("../src/pixelcnn.jl")
 
 ## data: the fixed binarised MNIST benchmark, as images (28, 28, 1, n)
 batch_size = 128

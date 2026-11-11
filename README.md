@@ -40,7 +40,7 @@ To pick a GPU, set `gpu_id` at the top of `setup.jl`.
 
 With [Revise.jl](https://github.com/timholy/Revise.jl), edits to a model file take effect without restarting:
 add `using Revise` to `~/.julia/config/startup.jl`, and in the setup cell load the model file you are editing
-with `includet` instead of `include`, e.g. `includet("src/pixelcnn.jl")`.
+with `includet` instead of `include`, e.g. `includet("../src/pixelcnn.jl")`.
 (Changing the definition of a `struct` still needs a restart.)
 
 ## Checking the code

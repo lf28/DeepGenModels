@@ -7,9 +7,9 @@ Description: DeepNADE on binarised MNIST (order-agnostic training), and RNADE (a
 
 ## setup
 cd(joinpath(@__DIR__, ".."))     # the repository root: data in ./datasets
-include("setup.jl")
-include("src/nade.jl")
-include("src/toy_data.jl")
+include("../setup.jl")             # paths in include() are relative to THIS file
+include("../src/nade.jl")
+include("../src/toy_data.jl")
 
 ## data: the fixed binarised MNIST benchmark, as vectors (784, n); the arrays behind the test and validation loaders
 mnist_binary_loader, mnist_binary_test, mnist_binary_valid = load_binary_mnist_data(1000; tensor_shape=(28^2, :));
