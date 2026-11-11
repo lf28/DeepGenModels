@@ -2,6 +2,7 @@
 File: test/smoke_test.jl
 Description: a quick check after changing the code: every model builds, trains for one short epoch on
              tiny FAKE data, gives a finite log-likelihood, samples, and is causal. About 5 minutes on a CPU.
+             Runs on the GPU when one is available: every model is moved with `|> device`, like the data.
              Run from the repository root:  julia --project test/smoke_test.jl
              It works in a temporary folder, so ./datasets and ./checkpoints are not touched.
 =#
@@ -55,7 +56,7 @@ end
                 end
             end
         end
-        s = sample(PixelCNNTwoStack((6, 6), 4, 3, 2), 3)
+        s = sample(PixelCNNTwoStack((6, 6), 4, 3, 2) |> device, 3) |> cpu
         @test size(s) == (6, 6, 1, 3) && all(in((0, 1)), s)
         # conditional model on labelled batches
         xs = Float32.(rand(28, 28, 1, 64) .< 0.2)
@@ -65,7 +66,7 @@ end
         l = fit!(cm, lab, Adam(), 1; verbose=false)
         @test ok(logpdf(cm, lab |> device))
         @test ok(logpdf(m2, lab |> device))           # unconditional model ignores the labels
-        cs = sample(ConPixelCNN(10, (6, 6), 4, 3, 2), [3, 4], 2)
+        cs = sample(ConPixelCNN(10, (6, 6), 4, 3, 2) |> device, [3, 4], 2)
         @test size(cs) == (6, 6, 1, 2)
         @test plot_receptive_field(net, x) isa Plots.Plot
     end
@@ -77,7 +78,7 @@ end
         (b1, y1) = first(loader)
         @test size(b1) == (28, 28, 1, 16) && eltype(b1) == Float32 && length(y1) == 16
         @test d[1:4][1] != d[1:4][1]                   # a fresh draw every time
-        cm = ConPixelCNN(10, (28, 28), 4, 3, 2)
+        cm = ConPixelCNN(10, (28, 28), 4, 3, 2) |> device
         l = fit!(cm, loader, Adam(), 1; verbose=false)
         @test length(l) == 4
     end
@@ -93,7 +94,7 @@ end
             @test ok(logpdf(m, te |> device))
         end
         @test test_autoregressive_property_comprehensive(WaveNet(20, 4, 2, 4; add_loc=true, dilation=true); input_shape=(20, 1, 1))
-        @test size(sample(WaveNet(30, 2, 2, 4), 3)) == (30, 3)
+        @test size(sample(WaveNet(30, 2, 2, 4) |> device, 3)) == (30, 3)
         xs = Float32.(rand(28^2, 1, 64) .< 0.2)
         ys = rand(0:9, 64)
         lab = Flux.DataLoader((xs, ys), batchsize=32)
@@ -104,7 +105,7 @@ end
             pps, targets = predict_y(cw, lab |> device)
             @test size(pps) == (10, 64) && all(isapprox.(sum(pps, dims=1), 1; atol=1e-4))
         end
-        @test size(sample(ConWaveNet(30, 2, 2, 4, 10), 3, 2)) == (30, 2)
+        @test size(sample(ConWaveNet(30, 2, 2, 4, 10) |> device, 3, 2)) == (30, 2)
     end
 
     @testset "MADE" begin
@@ -136,7 +137,7 @@ end
         loader = Flux.DataLoader((data,), batchsize=100, shuffle=true)
         r = DeepNADE(2, true, [32], relu; rnade=true, K=3) |> device
         l, _ = fit!(r, loader, Adam(0.001), 2; verbose=false)
-        @test isfinite(logpdf(r, data))
+        @test isfinite(logpdf(r, data |> device))
         @test size(sample(r, 5)) == (2, 5)
     end
 
