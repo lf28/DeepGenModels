@@ -67,12 +67,12 @@ function fit!(model, data_loader, optim=Adam(), max_epochs=10;
     @showprogress for epoch in 1:max_epochs
         epoch_loss = 0.0f0
         for (batch_idx, xs) in enumerate(data_loader)
-            if !conditional_model ## if p(x) only, ignore the label ys
-                xs = xs[1]
-            end
+            # if !conditional_model ## if p(x) only, ignore the label ys
+            #     xs = xs[1]
+            # end
             xs = xs |> device
             li, gs = Flux.withgradient(model) do m
-                -logpdf(m, xs)
+                -logpdf(m, xs...)
             end
             epoch_loss += li
             Flux.update!(opt, model, gs[1])
@@ -118,6 +118,135 @@ function fit!(model, data_loader, optim=Adam(), max_epochs=10;
         return losses
     end
 end
+
+
+
+
+# using Flux, Reactant, Optimisers, ProgressMeter, JLD2
+
+# 1. Define the compiled step function outside the fit! method loop boundary
+# function reactant_train_step!(model, xs, opt_state)
+#     li, gs = Flux.withgradient(m -> -logpdf(m, xs), AutoEnzyme(), model)
+#     Optimisers.update!(opt_state, model, gs)
+#     return li
+# end
+
+# function fit_reactant!(model, data_loader, optim=Adam(), max_epochs=10;
+#     save_check_points=false,
+#     conditional_model=false,
+#     verbose=true,
+#     every_epoch=10,
+#     valid_data=nothing,
+#     patience=20,
+#     device=reactant_device() # Automatically selects best Reactant target (CPU/GPU/TPU)
+# )
+#     # Ensure model parameters are loaded onto the Reactant device buffers
+#     model = model |> device
+#     opt = Flux.setup(optim, model)
+
+#     losses = Float32[]
+#     valid_loss = Float32[]
+#     validation_check = !isnothing(valid_data)
+
+#     if validation_check
+#         # Extract to local scalar via Float32() to pull off device
+#         current_val_loss = Float32(-logpdf(model, valid_data |> device))
+#         best_val_loss = Inf32
+#         epochs_no_improve = 0
+#         # Use Reactant.to_julia to create a plain, non-tracked CPU snapshot copy
+#         best_model = Reactant.to_julia(model)
+#     end
+
+#     if save_check_points
+#         struct_name = string(nameof(typeof(model)))
+#         param_strings = String[]
+#         for field in propertynames(model)
+#             val = getproperty(model, field)
+#             if val isa Union{Number,Bool,Symbol,AbstractString}
+#                 push!(param_strings, "$(field)=$(val)")
+#             end
+#         end
+#         folder_suffix = join(param_strings, "_")
+#         full_folder_name = isempty(folder_suffix) ? struct_name : "$(struct_name)_$(folder_suffix)"
+
+#         output_dir = joinpath("checkpoints", full_folder_name)
+#         mkpath(output_dir)
+#         println("Checkpoints will be saved to: $output_dir")
+#         epoch_file = joinpath(output_dir, "model_epoch_0.jld2")
+
+#         jldsave(epoch_file;
+#             model=Reactant.to_julia(model), # Reactant array parameters extracted to CPU
+#             train_loss=Float32(-logpdf(model, first(data_loader) |> device)),
+#             val_loss=validation_check ? current_val_loss : missing,
+#             epoch=0
+#         )
+#     end
+
+#     trainmode!(model)
+
+#     @showprogress for epoch in 1:max_epochs
+#         epoch_loss = 0.0f0
+
+#         for (batch_idx, xs) in enumerate(data_loader)
+#             if !conditional_model
+#                 xs = xs[1]
+#             end
+
+#             xs_dev = xs |> device
+
+#             # Execute the JIT-compiled Reactant step loop
+#             li_dev = reactant_train_step!(model, xs_dev, opt)
+
+#             # Instantly cast to a host scalar value
+#             li = Float32(li_dev)
+#             epoch_loss += li
+#             push!(losses, li)
+
+#             step_callback!(model, batch_idx)
+#         end
+
+#         epoch_loss = epoch_loss / length(data_loader)
+
+#         if verbose && (epoch % every_epoch) == 1
+#             @info "Epoch $(epoch); Loss = $(round(epoch_loss; digits=4))"
+#         end
+
+#         if validation_check
+#             current_val_loss = Float32(-logpdf(model, valid_data |> device))
+#             push!(valid_loss, current_val_loss)
+
+#             if current_val_loss < best_val_loss
+#                 best_val_loss = current_val_loss
+#                 best_model = Reactant.to_julia(model) # Safe deep-copy equivalent for Reactant devices
+#                 epochs_no_improve = 0
+#             else
+#                 epochs_no_improve += 1
+#             end
+
+#             if epochs_no_improve >= patience
+#                 @info "🛑 Early stopping triggered! No improvement for $patience epochs."
+#                 break
+#             end
+#         end
+
+#         if save_check_points
+#             epoch_file = joinpath(output_dir, "model_epoch_$(epoch).jld2")
+#             jldsave(epoch_file;
+#                 model=Reactant.to_julia(model),
+#                 train_loss=epoch_loss,
+#                 val_loss=validation_check ? current_val_loss : missing,
+#                 epoch=epoch
+#             )
+#         end
+#     end
+
+#     if validation_check
+#         return losses, valid_loss, best_model
+#     else
+#         return losses
+#     end
+# end
+
 
 
 ## set the same random seed for both CPU and GPU

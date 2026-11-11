@@ -247,7 +247,7 @@ end
 # using JLD2, Flux, Images, MosaicViews, Plots, CUDA
 
 # 2. The pipeline that loops through your sub-folder checkpoints
-function visualize_all_checkpoints(folder_path::String; num_samples=64, nrows=8)
+function visualize_all_checkpoints(folder_path::String; num_samples=64, nrows=8, every_epoch=5)
     # Locate and sort all numbered epoch checkpoints chronologically
     all_files = readdir(folder_path)
     epoch_files = filter(f -> occursin(r"model_epoch_\d+\.jld2", f), all_files)
@@ -262,8 +262,8 @@ function visualize_all_checkpoints(folder_path::String; num_samples=64, nrows=8)
     for (i, file) in enumerate(epoch_files)
         # === FILTER RULE ===
         # i <= 5: Shows indices 1, 2, 3, 4, 5
-        # i % 5 == 0: Shows indices 5, 10, 15, 20, etc.
-        if i <= 5 || (i-1) % 5 == 0 || i == length(epoch_files)
+        # i % every_epoch == 0
+        if i <= 5 || (i-1) % every_epoch == 0 || i == length(epoch_files)
             epoch_num = match(r"\d+", file).match
             checkpoint_path = joinpath(folder_path, file)
 
@@ -279,6 +279,9 @@ function visualize_all_checkpoints(folder_path::String; num_samples=64, nrows=8)
             raw_samples = sample(model, num_samples)
             #    
 
+            if ndims(raw_samples) == 4
+                raw_samples = tensor2vec(raw_samples)
+            end
             formatted_loss = round(val_loss, digits=2)
             #         # --- MOSAIC & PLOTTING BLOCK ---
             #         # Generate the 10x10 layout using your custom vec2imgs method
