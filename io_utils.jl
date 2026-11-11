@@ -62,28 +62,28 @@ tensor2vec(t; H=28, W=28) = reshape(t, (H * W, size(t)[end]));
 #     # return mnist_binary_loader, mnist_binary_test, mnist_binary_valid
 # end
 
+## the first `train_size` training images for training, the rest for validation; the test split for testing
 function load_mnist_data(batch_size::Int=2000; tensor_shape=(28^2, :), seed=2345, dtype=Bool, train_size=50000)
     Random.seed!(seed)
     ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
     reshape_tf = x -> reshape(x, tensor_shape...)
     Tx = dtype == Bool ? Float32 : dtype
-    xtrain, ytrain = MLDatasets.MNIST(Tx, split=:train)[:]
+    xall, yall = MLDatasets.MNIST(Tx, split=:train)[:]
     xtest, ytest = MLDatasets.MNIST(Tx, split=:test)[:]
-    xvalid, yvalid = MLDatasets.MNIST(Tx, split=:test)[:]
+    n_all = size(xall)[end]
+    train_size = min(train_size, n_all - 1)       # leave at least one image for validation
+    xtrain = xall[:, :, 1:train_size]
+    xvalid = xall[:, :, (train_size+1):n_all]
+    ytrain = yall[1:train_size]
+    yvalid = yall[(train_size+1):n_all]
     if dtype == Bool
         xtrain = (rand_like(xtrain) .< xtrain)
-        xtest = (rand_like(xtest) .< xtest)
         xvalid = (rand_like(xvalid) .< xvalid)
+        xtest = (rand_like(xtest) .< xtest)
     end
-    xtrain = xtrain |> reshape_tf
-    xtest = xtest |> reshape_tf
-    xvalid = xvalid |> reshape_tf
-    train_size = max(train_size, size(xtrain)[end])
-    xtrain = selectdim(xtrain, ndims(xtrain), 1:train_size)
-    ytrain = ytrain[1:train_size]
-    train_loader = Flux.DataLoader((Float32.(xtrain), ytrain), batchsize=batch_size, shuffle=true)
-    test_loader = Flux.DataLoader((Float32.(xtest), ytest), batchsize=batch_size, shuffle=true)
-    valid_loader = Flux.DataLoader((Float32.(xvalid), yvalid), batchsize=batch_size, shuffle=true)
+    train_loader = Flux.DataLoader((Float32.(reshape_tf(xtrain)), ytrain), batchsize=batch_size, shuffle=true)
+    test_loader = Flux.DataLoader((Float32.(reshape_tf(xtest)), ytest), batchsize=batch_size, shuffle=true)
+    valid_loader = Flux.DataLoader((Float32.(reshape_tf(xvalid)), yvalid), batchsize=batch_size, shuffle=true)
     return train_loader, test_loader, valid_loader
 end
 
@@ -98,7 +98,7 @@ function load_binary_mnist_data(batch_size::Int=2000; tensor_shape=(28^2, :), se
     mnist_binary_train = BitMatrix(bmnist["train_data"]') |> reshape_tf
     mnist_binary_valid = BitMatrix(bmnist["valid_data"]') |> reshape_tf
 
-    train_size = max(train_size, size(mnist_binary_train)[end])
+    train_size = min(train_size, size(mnist_binary_train)[end])   # at most the 50,000 in the file
     train_data = selectdim(mnist_binary_train, ndims(mnist_binary_train), 1:train_size)
     train_loader = Flux.DataLoader((Float32.(train_data),), batchsize=batch_size, shuffle=true)
     test_loader = Flux.DataLoader((Float32.(mnist_binary_test),), batchsize=batch_size, shuffle=true)
