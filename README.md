@@ -20,7 +20,7 @@ src/
 experiments/          one script per model family, run cell by cell
 ```
 
-The notebooks (`*.ipynb`) and the old `utils.jl`, `io_utils.jl` and `generate_data.jl` are kept unchanged for now.
+The original notebooks and utilities are kept locally in `.old/` (ignored by Git); they are in the history before commit `ac9d1d3`.
 
 ## Running an experiment
 
