@@ -41,5 +41,5 @@ include("src/data.jl")
 include("src/plotting.jl")
 include("src/checks.jl")
 
-## hide cuDNN's repeated log messages
-global_logger(cudnn_filter)
+## Not installed: the cuDNN log filter `global_logger(cudnn_filter)` breaks GPU kernel compilation with the
+## current CUDA.jl ("no method matching invoke min_enabled_level(::ActiveFilteredLogger)", a world-age error)

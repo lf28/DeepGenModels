@@ -150,7 +150,7 @@ function rand_like(template_array)
 end
 
 
-## drops cuDNN's log messages
+## drops cuDNN's log messages (not installed by setup.jl: it breaks GPU compilation with the current CUDA.jl)
 cudnn_filter = ActiveFilteredLogger(global_logger()) do log
     !occursin("cuDNN", string(log._module))
 end
